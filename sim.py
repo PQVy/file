@@ -44,8 +44,8 @@ DATA_CHECK_SMS = {
     },
 
     "vinaphone": {
-        "number": "1414",
-        "message": "TTTB",
+        "number": "888",
+        "message": "DATA",
     },
 }
 
