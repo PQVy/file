@@ -1152,8 +1152,9 @@ def decode_pdu(pdu_hex):
             # (Hoặc bạn có thể thêm logic unpack 7-bit septets ở đây nếu cần)
             return user_data.decode('utf-8', errors='ignore')
             
-    except Exception:
+    except Exception as ex:
         # Nếu giải mã PDU lỗi, trả về chuỗi gốc để tránh crash
+        print(ex)
         return pdu_hex
 
 
