@@ -582,7 +582,7 @@ def setup_sms(modem):
     )
 
     modem.command(
-        "AT+CMGF=1",
+        "AT+CMGF=0",
         timeout=5
     )
 
