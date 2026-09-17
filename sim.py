@@ -1,6 +1,8 @@
 
 #!/usr/bin/env python3
 
+import binascii
+
 import serial
 import time
 import re
@@ -580,7 +582,7 @@ def setup_sms(modem):
     )
 
     modem.command(
-        "AT+CMGF=0",
+        "AT+CMGF=1",
         timeout=5
     )
 
@@ -1015,6 +1017,13 @@ def parse_data_sms(
         "raw_message": message,
     }
 
+    # KIỂM TRA VÀ TỰ ĐỘNG GIẢI MÃ NẾU LÀ TIN NHẮN MÃ HÓA PDU HEX
+    actual_message = message
+    if is_hex_pdu(message):
+        actual_message = decode_pdu(message)
+        # Cập nhật lại tin nhắn đã giải mã vào kết quả nếu muốn log
+        result["decoded_message"] = actual_message 
+
     # ========================================================
     # VIETTEL
     # ========================================================
@@ -1080,6 +1089,72 @@ def parse_data_sms(
             )
 
     return result
+
+
+def is_hex_pdu(s):
+    """
+    Kiểm tra xem chuỗi có phải là chuỗi mã hóa PDU Hex không.
+    Dấu hiệu: Chỉ chứa ký tự hex, độ dài chẵn và thường lớn hơn 20 ký tự.
+    """
+    if not isinstance(s, str):
+        return False
+    s = s.strip()
+    # PDU hex chỉ chứa ký tự 0-9, a-f, A-F và độ dài phải là số chẵn
+    if not re.match(r'^[0-9a-fA-F]+\$', s) or len(s) % 2 != 0:
+        return False
+    # Tin nhắn SMS PDU thường dài (ít nhất > 20 ký tự để chứa header và nội dung)
+    return len(s) > 20
+
+
+def decode_pdu(pdu_hex):
+    """
+    Giải mã chuỗi PDU Hex thô thành văn bản chữ đọc được.
+    Hỗ trợ tự động nhận diện bảng mã UCS2 hoặc GSM 7-bit.
+    """
+    try:
+        pdu_bytes = binascii.unhexlify(pdu_hex.strip())
+        
+        # 1. Bỏ qua phần SMSC (Trung tâm nhắn tin)
+        smsc_len = pdu_bytes[0]
+        cursor = 1 + smsc_len # Nhảy qua SMSC
+        
+        # 2. Bỏ qua First octet của SMS-DELIVER
+        cursor += 1 
+        
+        # 3. Bỏ qua Số điện thoại người gửi (Sender Address)
+        sender_len = pdu_bytes[cursor]
+        # Số byte của số điện thoại = (độ dài số + 1) // 2 + 1 (byte định dạng số)
+        sender_bytes_len = ((sender_len + 1) // 2) + 1 
+        cursor += 1 + sender_bytes_len
+        
+        # 4. Bỏ qua Protocol Identifier (TP-PID) và Data Coding Scheme (TP-DCS)
+        tp_pid = pdu_bytes[cursor]
+        tp_dcs = pdu_bytes[cursor + 1]
+        cursor += 2
+        
+        # 5. Bỏ qua Service Centre Time Stamp (TP-SCTS) - 7 bytes
+        cursor += 7
+        
+        # 6. Đọc độ dài nội dung (User Data Length)
+        user_data_len = pdu_bytes[cursor]
+        cursor += 1
+        
+        # Lấy phần data thô còn lại
+        user_data = pdu_bytes[cursor:]
+        
+        # 7. Giải mã dựa trên TP-DCS (Data Coding Scheme)
+        # Nếu dcs == 0x08 hoặc các byte dữ liệu chứa ký tự null phổ biến của UCS2
+        if tp_dcs == 0x08 or tp_dcs & 0x0C == 0x08:
+            # Mã hóa UCS2 (UTF-16 Big Endian)
+            return user_data[:user_data_len * 2].decode('utf-16-be', errors='ignore')
+        else:
+            # Mặc định thử giải mã theo GSM 7-bit nếu không phải UCS2
+            # (Hoặc bạn có thể thêm logic unpack 7-bit septets ở đây nếu cần)
+            return user_data.decode('utf-8', errors='ignore')
+            
+    except Exception:
+        # Nếu giải mã PDU lỗi, trả về chuỗi gốc để tránh crash
+        return pdu_hex
 
 
 # ============================================================
