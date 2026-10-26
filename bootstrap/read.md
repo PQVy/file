@@ -1,0 +1,1 @@
+Lỗi thiết bị khi gọi bootstrap vẫn lấy thấy server trả về có giá trị cấu hình, mặc dù khi gọi bth thì không bị, bị nhiều lúc nửa đêm khởi động lại, các thiết bị đều gọi nên có thể server trả về lỗi
