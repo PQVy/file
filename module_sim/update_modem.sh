@@ -49,6 +49,8 @@ done
 [ -z "$MODEM" ] && usage
 [ -z "$VERSION" ] && usage
 
+BINFILE="BinFile_${VERSION}.bin"
+
 case "$MODEM" in
     A7600)
         BASE_URL="http://repo.smatec.com.vn/modem/a7600"
@@ -56,6 +58,7 @@ case "$MODEM" in
         EXPECTED_VID="1e0e"
         EXPECTED_PID="9011"
         LOGFILE="/tmp/a7600_upgrade.log"
+        BINFILE="BinFile_A7600C_${VERSION}.bin"
 
         echo "$VERSION" | grep -q "A7600" || {
             echo "ERROR: Firmware version does not match modem type A7600"
@@ -94,7 +97,6 @@ case "$MODEM" in
         ;;
 esac
 
-BINFILE="BinFile_A7600C_${VERSION}.bin"
 WD="/tmp"
 
 check_usb_device()
