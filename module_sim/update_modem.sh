@@ -49,7 +49,7 @@ done
 [ -z "$MODEM" ] && usage
 [ -z "$VERSION" ] && usage
 
-#BINFILE="BinFile_${VERSION}.bin"
+BINFILE="BinFile_${VERSION}.bin"
 
 case "$MODEM" in
     A7600)
